@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>ScamDetector</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/libphonenumber-js/bundle/libphonenumber-max.js"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6">
+
+<div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+
+  <!-- HEADER -->
+  <div class="flex justify-between items-center mb-4">
+
+    <div>
+      <h1 class="text-3xl font-bold text-green-400">
+        ScamDetector
+      </h1>
+
+      <p class="text-gray-400 text-sm">
+        Detect suspicious scam messages
+      </p>
+    </div>
+
+    <button
+      onclick="logoutUser()"
+      class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded text-sm font-bold"
+    >
+      Logout
+    </button>
+
+  </div>
+
+  <!-- USER INFO -->
+  <div class="bg-gray-700 p-3 rounded mb-5">
+
+    <p class="text-sm text-gray-300">
+      Logged in as:
+    </p>
+
+    <p
+      id="loggedUser"
+      class="font-bold text-green-400"
+    >
+      Loading...
+      
+    </p>
+
+  </div>
+<!-- ========================= -->
+<!-- REPORTER INFORMATION -->
+<!-- ========================= -->
+
+<h3 class="text-green-400 text-lg font-bold mb-3">
+  Reporter Information
+</h3>
+
+
+
+<select
+  id="region"
+  class="w-full p-3 mb-5 rounded bg-gray-700 focus:outline-none"
+>
+  <option value="Maseru">Maseru</option>
+  <option value="Leribe">Leribe</option>
+  <option value="Berea">Berea</option>
+  <option value="Mafeteng">Mafeteng</option>
+  <option value="Qacha's Nek">Qacha's Nek</option>
+</select>
+<!-- REPORT TYPE -->
+
+<h3 class="text-blue-400 text-lg font-bold mb-3">
+  Report Source
+</h3>
+
+<select
+  id="sourceType"
+  class="w-full p-3 mb-5 rounded bg-gray-700 focus:outline-none"
+>
+  <option value="SMS">SMS</option>
+  <option value="Email">Email</option>
+  <option value="WhatsApp">WhatsApp</option>
+  <option value="Facebook">Facebook</option>
+  <option value="Telegram">Telegram</option>
+  <option value="Other">Other</option>
+</select>
+
+<!-- ========================= -->
+<!-- NUMBER BEING REPORTED -->
+<!-- ========================= -->
+
+<h3 class="text-red-400 text-lg font-bold mb-3">
+  Suspicious Number Information
+</h3>
+
+<input
+  id="reportedContact"
+  placeholder="Enter reported contact"
+  class="w-full p-3 mb-3 rounded bg-gray-700 focus:outline-none"
+/>
+
+<p
+  id="countryDisplay"
+  class="text-gray-400 text-sm mb-3"
+>
+</p>
+
+<textarea
+  id="msg"
+  placeholder="Copy of suspicious SMS message"
+  class="w-full p-3 mb-4 rounded bg-gray-700 focus:outline-none"
+></textarea>
+
+  <!-- ANALYZE BUTTON -->
+  <button
+    id="analyzeBtn"
+    onclick="check()"
+    class="w-full bg-green-500 hover:bg-green-600 p-3 rounded font-bold"
+  >
+    Analyze Message
+  </button>
+
+  <!-- RESULTS -->
+  <div class="mt-6 text-center">
+
+    <p
+      id="result"
+      class="text-xl font-bold"
+    ></p>
+
+    <p
+      id="reason"
+      class="text-gray-300 mt-2"
+    ></p>
+
+    <p
+      id="count"
+      class="text-gray-400 mt-2"
+    ></p>
+
+  </div>
+
+  <!-- SEARCH SECTION -->
+  <hr class="my-8 border-gray-600">
+
+  <h3 class="text-xl font-bold mb-3 text-center">
+    Check Phone Number
+  </h3>
+
+  <input
+    id="searchPhone"
+    placeholder="Enter phone number"
+    class="w-full p-3 mb-3 rounded bg-gray-700"
+  >
+
+  <button
+    onclick="searchNumber()"
+    class="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded font-bold"
+  >
+    Search Number
+  </button>
+
+  <p
+    id="searchResult"
+    class="mt-4 text-center"
+  ></p>
+
+  <!-- FOOTER -->
+  <footer class="text-center text-gray-500 mt-8 text-sm">
+    ScamDetector © 2026
+  </footer>
+
+</div>
+
+<script>
+
+let currentUser = null;
+
+// =========================
+// LOAD USER
+// =========================
+async function loadUser() {
+
+  try {
+
+    const res = await fetch(
+      "http://127.0.0.1:8000/api/check-auth/",
+      {
+        credentials: "include"
+      }
+    );
+
+    const data = await res.json();
+
+    // NOT LOGGED IN
+    if (!data.authenticated) {
+
+      window.location.href = "/login";
+
+      return;
+    }
+
+    currentUser = data;
+
+    // DISPLAY USER
+    document.getElementById("loggedUser").innerText =
+      `${data.user} (${data.email})`;
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    document.getElementById("loggedUser").innerText =
+      "Not logged in";
+  }
+}
+
+
+// =========================
+// COUNTRY DETECTION
+// =========================
+document.getElementById("reportedContact")
+.addEventListener("input", function () {
+
+  const input =
+    this.value.trim();
+
+  let display =
+    document.getElementById("countryDisplay");
+
+  // NON PHONE SOURCES
+  if (!input.startsWith("+")) {
+
+    display.innerText =
+      "Detected Country: Non-phone source";
+
+    return;
+  }
+
+  try {
+
+    const parsed =
+      libphonenumber.parsePhoneNumber(input);
+
+    if (parsed && parsed.country) {
+
+      const regionNames = new Intl.DisplayNames(
+        ['en'],
+        { type: 'region' }
+      );
+
+      const countryName =
+        regionNames.of(parsed.country);
+
+      display.innerText =
+        `Detected Country: ${countryName}`;
+
+    }
+
+    else {
+
+      display.innerText =
+        "Detected Country: Unknown";
+
+    }
+
+  }
+
+  catch {
+
+    display.innerText =
+      "Detected Country: Invalid number";
+
+  }
+
+});
+
+
+// =========================
+// REPORT SOURCE PLACEHOLDER
+// =========================
+const sourceType =
+  document.getElementById("sourceType");
+
+const reportedContact =
+  document.getElementById("reportedContact");
+
+sourceType.addEventListener("change", () => {
+
+  const type = sourceType.value;
+
+  if (type === "SMS" || type === "WhatsApp") {
+
+    reportedContact.placeholder =
+      "Enter phone number";
+
+  }
+
+  else if (type === "Email") {
+
+    reportedContact.placeholder =
+      "Enter email address";
+
+  }
+
+  else if (
+    type === "Instagram" ||
+    type === "Telegram" ||
+    type === "Facebook"
+  ) {
+
+    reportedContact.placeholder =
+      "Enter username/account";
+
+  }
+
+  else {
+
+    reportedContact.placeholder =
+      "Enter reported contact";
+
+  }
+
+});
+
+
+// =========================
+// ANALYZE MESSAGE
+// =========================
+async function check() {
+
+  try {
+
+    let reporter_region =
+      document.getElementById("region").value;
+
+    let source_type =
+      document.getElementById("sourceType").value;
+
+    let reported_contact =
+      document.getElementById("reportedContact").value;
+
+    let message =
+      document.getElementById("msg").value;
+
+    // VALIDATION
+    if (!reported_contact || !message) {
+
+      alert("Please fill all fields");
+
+      return;
+    }
+
+    // BUTTON
+    let btn =
+      document.getElementById("analyzeBtn");
+
+    btn.innerText = "Analyzing...";
+    btn.disabled = true;
+
+    // REQUEST
+    let res = await fetch(
+      "http://127.0.0.1:8000/api/analyze/",
+      {
+        method: "POST",
+
+        credentials: "include",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+
+          reporter_region,
+          source_type,
+          reported_contact,
+
+          phone_country:
+            document.getElementById("countryDisplay")
+            .innerText.replace(
+              "Detected Country: ",
+              ""
+            ),
+
+          message
+
+        })
+      }
+    );
+
+    let data = await res.json();
+
+    // SERVER ERROR
+    if (data.error) {
+
+      alert(data.error);
+
+      btn.innerText = "Analyze Message";
+      btn.disabled = false;
+
+      return;
+    }
+
+    // RESULT
+    let resultText =
+      document.getElementById("result");
+
+    resultText.innerText =
+      data.result;
+
+    // COLORS
+    if (data.result === "Scam") {
+
+      resultText.className =
+        "text-red-400 text-2xl font-bold";
+
+    }
+
+    else if (data.result === "Suspicious") {
+
+      resultText.className =
+        "text-yellow-400 text-2xl font-bold";
+
+    }
+
+    else {
+
+      resultText.className =
+        "text-green-400 text-2xl font-bold";
+
+    }
+
+    // REASON
+    document.getElementById("reason").innerText =
+      data.reason;
+
+    // REPORT COUNT
+    document.getElementById("count").innerText =
+      `Reported ${data.reports} times`;
+
+    // RESTORE BUTTON
+    btn.innerText = "Analyze Message";
+    btn.disabled = false;
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    alert("Server connection error");
+
+  }
+}
+
+
+// =========================
+// SEARCH NUMBER
+// =========================
+async function searchNumber() {
+
+  let phone =
+    document.getElementById("searchPhone").value;
+
+  if (!phone) {
+
+    alert("Enter phone number");
+
+    return;
+  }
+
+  try {
+
+    let res = await fetch(
+      `http://127.0.0.1:8000/api/check/?phone=${phone}`
+    );
+
+    let data = await res.json();
+
+    let result =
+      document.getElementById("searchResult");
+
+    result.innerText = `
+
+Number: ${data.phone}
+
+Risk Level: ${data.risk}
+
+Reports: ${data.reports}
+
+Reported Mostly From:
+${data.reporter_region}
+
+Detected Country:
+${data.country}
+
+`;
+
+    // COLORS
+    if (data.risk === "Scam") {
+
+      result.className =
+        "text-red-400 font-bold mt-4 whitespace-pre-line";
+
+    }
+
+    else if (data.risk === "Suspicious") {
+
+      result.className =
+        "text-yellow-400 font-bold mt-4 whitespace-pre-line";
+
+    }
+
+    else {
+
+      result.className =
+        "text-green-400 font-bold mt-4 whitespace-pre-line";
+
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    alert("Search failed");
+
+  }
+
+}
+
+
+// =========================
+// LOGOUT
+// =========================
+async function logoutUser() {
+
+  await fetch(
+    "http://127.0.0.1:8000/api/logout/",
+    {
+      method: "POST",
+      credentials: "include"
+    }
+  );
+
+  window.location.href = "/login";
+
+}
+
+
+// =========================
+// START
+// =========================
+loadUser();
+
+</script>
+
+</body>
+</html>

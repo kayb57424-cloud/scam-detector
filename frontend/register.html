@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>ScamDetector Register</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 flex items-center justify-center h-screen">
+
+  <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-96">
+
+    <h1 class="text-3xl font-bold text-green-400 text-center mb-6">
+      Create Account
+    </h1>
+
+    <!-- USERNAME -->
+    <input
+      type="text"
+      id="username"
+      placeholder="Username"
+      class="w-full p-3 rounded bg-gray-700 text-white mb-4 outline-none"
+    >
+
+    <!-- EMAIL -->
+    <input
+      type="email"
+      id="email"
+      placeholder="Email Address"
+      class="w-full p-3 rounded bg-gray-700 text-white mb-4 outline-none"
+    >
+
+    <!-- PHONE -->
+    <input
+      type="text"
+      id="phone"
+      placeholder="Phone Number"
+      class="w-full p-3 rounded bg-gray-700 text-white mb-4 outline-none"
+    >
+
+    <!-- PASSWORD -->
+    <input
+      type="password"
+      id="password"
+      placeholder="Password"
+      class="w-full p-3 rounded bg-gray-700 text-white mb-4 outline-none"
+    >
+
+    <!-- REGISTER BUTTON -->
+    <button
+      onclick="registerUser()"
+      class="w-full bg-green-500 hover:bg-green-600 p-3 rounded font-bold"
+    >
+      Register
+    </button>
+
+    <!-- LOGIN LINK -->
+    <p class="text-center text-gray-400 mt-4">
+
+      Already have an account?
+
+      <a
+        href="/login"
+        class="text-green-400"
+      >
+        Login
+      </a>
+
+    </p>
+
+  </div>
+
+  <script>
+
+    async function registerUser() {
+
+      // GET VALUES
+      const username = document.getElementById("username").value;
+
+      const email = document.getElementById("email").value;
+
+      const phone = document.getElementById("phone").value;
+
+      const password = document.getElementById("password").value;
+
+      // VALIDATION
+      if (
+        !username ||
+        !email ||
+        !phone ||
+        !password
+      ) {
+
+        alert("Please fill all fields");
+
+        return;
+      }
+
+      try {
+
+        // API REQUEST
+        const res = await fetch(
+          "http://127.0.0.1:8000/api/register/",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+              username,
+              email,
+              phone,
+              password
+
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        // ERROR
+        if (data.error) {
+
+          alert(data.error);
+
+          return;
+        }
+
+        // SUCCESS
+        alert("Registration successful");
+
+        // REDIRECT
+        window.location.href = "/login";
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert("Server error");
+      }
+    }
+
+  </script>
+
+</body>
+</html>

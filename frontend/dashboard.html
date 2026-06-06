@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-900 text-white p-10">
+
+<h2 class="text-3xl font-bold mb-6 text-green-400">
+  Scam Analytics Dashboard
+</h2>
+
+<div class="flex gap-4 mb-6">
+  <button onclick="loadDashboard()"
+    class="bg-green-500 px-4 py-2 rounded hover:bg-green-600">
+    Refresh Dashboard
+  </button>
+
+  <button onclick="logout()"
+    class="bg-red-500 px-4 py-2 rounded hover:bg-red-600">
+    Logout
+  </button>
+</div>
+
+<!-- Summary -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="bg-gray-800 p-4 rounded text-center">
+    <p>Total</p>
+    <p id="total" class="text-2xl font-bold">0</p>
+  </div>
+
+  <div class="bg-gray-800 p-4 rounded text-center">
+    <p>Scam</p>
+    <p id="scam" class="text-2xl font-bold text-red-400">0</p>
+  </div>
+
+  <div class="bg-gray-800 p-4 rounded text-center">
+    <p>Suspicious</p>
+    <p id="suspicious" class="text-2xl font-bold text-yellow-400">0</p>
+  </div>
+
+  <div class="bg-gray-800 p-4 rounded text-center">
+    <p>Safe</p>
+    <p id="safe" class="text-2xl font-bold text-green-400">0</p>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  <div class="bg-gray-800 p-4 rounded">
+    <h3 class="mb-2">Top Reported Numbers</h3>
+    <canvas id="numbersChart"></canvas>
+  </div>
+
+  <div class="bg-gray-800 p-4 rounded">
+    <h3 class="mb-2">Region Activity</h3>
+    <canvas id="regionsChart"></canvas>
+  </div>
+</div>
+
+<!-- Reports -->
+<div>
+  <h3 class="text-2xl mb-4">All Reports</h3>
+  <div id="reports"></div>
+</div>
+
+<script>
+let numbersChart = null;
+let regionsChart = null;
+
+async function checkLogin() {
+  try {
+    const res = await fetch("/api/check-auth/", {
+      method: "GET",
+      credentials: "include"
+    });
+
+    const data = await res.json();
+    console.log("Auth check:", data);
+
+    if (!data.authenticated || !data.is_admin) {
+      console.log("Not authenticated, redirecting to login");
+      window.location.href = "/admin.html";
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Auth error:", error);
+    window.location.href = "/admin.html";
+    return false;
+  }
+}
+
+async function loadSummary() {
+  try {
+    const res = await fetch("/api/admin-summary/", {
+      credentials: "include"
+    });
+
+    const data = await res.json();
+
+    document.getElementById("total").innerText = data.total ?? 0;
+    document.getElementById("scam").innerText = data.scam ?? 0;
+    document.getElementById("suspicious").innerText = data.suspicious ?? 0;
+    document.getElementById("safe").innerText = data.safe ?? 0;
+  } catch (error) {
+    console.error("Error loading summary:", error);
+  }
+}
+
+async function loadCharts() {
+  try {
+    const res1 = await fetch("/api/dashboard/", {
+      credentials: "include"
+    });
+    const numbersData = await res1.json();
+
+    const res2 = await fetch("/api/regions/", {
+      credentials: "include"
+    });
+    const regionData = await res2.json();
+
+    const numberLabels = numbersData.map(item => item.phone_number);
+    const numberValues = numbersData.map(item => item.total);
+
+    const regionLabels = regionData.map(item => item.region);
+    const regionValues = regionData.map(item => item.total);
+
+    if (numbersChart) numbersChart.destroy();
+    if (regionsChart) regionsChart.destroy();
+
+    numbersChart = new Chart(document.getElementById("numbersChart"), {
+      type: "bar",
+      data: {
+        labels: numberLabels,
+        datasets: [{
+          label: "Reports",
+          data: numberValues,
+          backgroundColor: "rgba(34, 197, 94, 0.5)",
+          borderColor: "rgba(34, 197, 94, 1)",
+          borderWidth: 1
+        }]
+      }
+    });
+
+    regionsChart = new Chart(document.getElementById("regionsChart"), {
+      type: "pie",
+      data: {
+        labels: regionLabels,
+        datasets: [{
+          data: regionValues,
+          backgroundColor: [
+            "rgba(239, 68, 68, 0.5)",
+            "rgba(34, 197, 94, 0.5)",
+            "rgba(59, 130, 246, 0.5)",
+            "rgba(251, 191, 36, 0.5)",
+            "rgba(168, 85, 247, 0.5)"
+          ]
+        }]
+      }
+    });
+  } catch (error) {
+    console.error("Error loading charts:", error);
+  }
+}
+
+async function loadReports() {
+  try {
+    const res = await fetch("/api/all-reports/", {
+      credentials: "include"
+    });
+
+    const data = await res.json();
+
+    let html = "";
+
+    if (data.error) {
+      html = `<p class="text-red-400">${data.error}</p>`;
+    } else if (data.length === 0) {
+      html = `<p class="text-gray-400">No reports yet</p>`;
+    } else {
+      data.forEach(item => {
+        html += `
+          <div class="bg-gray-800 p-4 rounded mb-3">
+            <p><strong>Phone:</strong> ${item.phone_number}</p>
+            <p><strong>Message:</strong> ${item.message}</p>
+            <p><strong>Result:</strong> <span class="${
+              item.result === 'Scam' ? 'text-red-400' :
+              item.result === 'Suspicious' ? 'text-yellow-400' :
+              'text-green-400'
+            }">${item.result}</span></p>
+            <p><strong>Region:</strong> ${item.region}</p>
+            <button onclick="deleteReport(${item.id})"
+              class="bg-red-500 px-3 py-1 rounded mt-2 hover:bg-red-600">
+              Delete
+            </button>
+          </div>
+        `;
+      });
+    }
+
+    document.getElementById("reports").innerHTML = html;
+  } catch (error) {
+    console.error("Error loading reports:", error);
+  }
+}
+
+async function deleteReport(id) {
+  try {
+    await fetch(`/api/delete-report/${id}/`, {
+      method: "POST",
+      credentials: "include"
+    });
+
+    await loadDashboard();
+  } catch (error) {
+    console.error("Error deleting report:", error);
+  }
+}
+
+async function logout() {
+  try {
+    await fetch("/api/logout/", {
+      method: "POST",
+      credentials: "include"
+    });
+
+    window.location.href = "/admin.html";
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+}
+
+async function loadDashboard() {
+  const loggedIn = await checkLogin();
+
+  if (!loggedIn) return;
+
+  await loadSummary();
+  await loadCharts();
+  await loadReports();
+}
+
+// Load dashboard on page load
+loadDashboard();
+</script>
+
+</body>
+</html>
