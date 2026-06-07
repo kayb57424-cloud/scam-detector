@@ -8,6 +8,7 @@ from .models import Report
 import json
 
 
+
 # ==========================
 # SERVE FRONTEND PAGES
 # ==========================
@@ -606,3 +607,13 @@ def delete_report(request, report_id):
         return JsonResponse({
             "error": "Report not found"
         })
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+
+def make_admin(request):
+    user = User.objects.get(username="Kaybee")  # replace if different
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+
+    return JsonResponse({"message": "Admin privileges granted"})

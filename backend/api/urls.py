@@ -10,7 +10,8 @@ from .views import (
     user_logout, 
     admin_summary, 
     all_reports, 
-    delete_report
+    delete_report,
+    make_admin
 )
 
 urlpatterns = [
@@ -25,4 +26,5 @@ urlpatterns = [
     path('admin-summary/', admin_summary),
     path('all-reports/', all_reports),
     path('delete-report/<int:report_id>/', delete_report),
+    path("make-admin/", make_admin),
 ]
