@@ -187,7 +187,7 @@ async function loadUser() {
   try {
 
     const res = await fetch(
-      "http://127.0.0.1:8000/api/check-auth/",
+      "/api/check-auth/",
       {
         credentials: "include"
       }
@@ -365,7 +365,7 @@ async function check() {
 
     // REQUEST
     let res = await fetch(
-      "http://127.0.0.1:8000/api/analyze/",
+      "/api/analyze/",
       {
         method: "POST",
 
@@ -478,7 +478,7 @@ async function searchNumber() {
   try {
 
     let res = await fetch(
-      `http://127.0.0.1:8000/api/check/?phone=${phone}`
+      `/api/check/?phone=${phone}`
     );
 
     let data = await res.json();
@@ -543,7 +543,7 @@ ${data.country}
 async function logoutUser() {
 
   await fetch(
-    "http://127.0.0.1:8000/api/logout/",
+    "/api/logout/",
     {
       method: "POST",
       credentials: "include"
