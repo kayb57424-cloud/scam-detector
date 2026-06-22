@@ -25,6 +25,12 @@ class Report(models.Model):
         max_length=255
     )
 
+    # NEW FIELD
+    phone_country = models.CharField(
+        max_length=100,
+        default="Unknown"
+    )
+
     message = models.TextField()
 
     result = models.CharField(
@@ -32,7 +38,8 @@ class Report(models.Model):
     )
 
     region = models.CharField(
-        max_length=100
+        max_length=100,
+        default="Unknown"
     )
 
     created_at = models.DateTimeField(
